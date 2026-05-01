@@ -569,7 +569,17 @@ def import_credential(name, input_file, env_key, description, overwrite):
     # type: (Optional[str], Optional[str], Optional[str], Optional[str], bool) -> None
     base_url, token, ca_cert, dotenv_path = _resolve_server_config(return_env_path=True)
 
-    if env_key:
+    if name and env_key:
+        env_vars = dotenv_values(dotenv_path)
+        existing = env_vars.get(env_key)
+        if existing is not None and existing != name:
+            print("Error: {} is already mapped to '{}' in {}. Use --name {} to match, or edit {} manually.".format(
+                env_key, existing, ENV_FILE_NAME, existing, ENV_FILE_NAME))
+            sys.exit(1)
+        if existing is None:
+            set_env_variable(env_key, name)
+            print("Mapped {}={} in {}".format(env_key, name, ENV_FILE_NAME))
+    elif env_key:
         env_vars = dotenv_values(dotenv_path)
         name = env_vars.get(env_key)
 
