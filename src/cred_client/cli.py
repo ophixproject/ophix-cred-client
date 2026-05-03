@@ -726,8 +726,8 @@ COMMANDS = {
     "import": {
         "help": "Import or update a credential on the server",
         "arguments": [
-            {"name": "--name",         "help": "Credential name"},
-            {"name": "--var",          "help": "Env var in .cred.env holding the credential name"},
+            {"name": "--name",         "metavar": "NAME", "help": "Credential name"},
+            {"name": "--var",          "metavar": "ENV_VAR", "help": "Env var in .cred.env holding the credential name"},
             {"name": "--input-file",   "required": True, "help": "JSON file containing secret"},
             {"name": "--description",  "help": "Credential description"},
             {"name": "--overwrite",    "action": "store_true", "help": "Update existing credential"},
@@ -758,7 +758,7 @@ COMMANDS = {
                 "arguments": [
                     {"name": "--all",  "action": "store_true"},
                     {"name": "--var",  "metavar": "ENV_VAR"},
-                    {"name": "--name", "metavar": "CRED_NAME"},
+                    {"name": "--name", "metavar": "NAME"},
                 ],
             }
         ],
