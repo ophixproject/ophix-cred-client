@@ -53,17 +53,24 @@ on the server.
 
 ```text
 cred-client quickstart <server_url> <client_name> [--deployment-ref ...]
-cred-client fetch <name>
+cred-client fetch {--name <n>|--var <VAR>}
 cred-client register <name> [deployment_ref]
 cred-client update [--deployment-ref ...]
 cred-client set {server|ca-cert|token} <value>
 cred-client download ca-cert
-cred-client import --input-file <file> [--name <n>] [--env <VAR>] [--description ...] [--overwrite]
+cred-client import --input-file <file> [--name <n>] [--var <VAR>] [--description ...] [--overwrite]
 cred-client check {--all|--var <VAR>|--name <name>} [--verbose]
 cred-client info
 cred-client rotate-token
 cred-client doctor
 ```
+
+### fetch
+
+| Usage | What happens |
+| --- | --- |
+| `--name <n>` | Fetches the credential named `<n>` directly |
+| `--var <VAR>` | Reads the credential name from `<VAR>` in `.cred.env`, then fetches it |
 
 ### import
 
@@ -71,11 +78,11 @@ Uploads a JSON file as a credential on the server. The credential name is resolv
 
 | Flags | Behaviour |
 | --- | --- |
-| `--name <n>` | Creates the credential with the given name |
-| `--env <VAR>` | Reads the credential name from the `<VAR>` mapping already in `.cred.env` |
-| `--name <n> --env <VAR>` | Writes `<VAR>=<n>` to `.cred.env`, then creates the credential — one step setup for Tier 2 consumers |
+| `--name <n>` only | Creates the credential with the given name |
+| `--var <VAR>` only | Reads the credential name from the `<VAR>` mapping already in `.cred.env` |
+| `--name <n> --var <VAR>` | Writes `<VAR>=<n>` to `.cred.env`, then creates the credential — one step setup for Tier 2 consumers |
 
-When `--name` and `--env` are both given and `<VAR>` already exists in `.cred.env` with a **different** name, the command refuses with an error. If it already maps to the same name, it proceeds normally.
+When `--name` and `--var` are both given and `<VAR>` already exists in `.cred.env` with a **different** name, the command refuses with an error. If it already maps to the same name, it proceeds normally.
 
 Add `--overwrite` to update an existing credential instead of creating a new one (requires `can_update` on the server-side link).
 

@@ -119,8 +119,14 @@ def set_env_variable(var, value, verbose=True):
 EXCLUDED_ENV_KEYS = set(RESERVED_KEY_NAMES.values())
 
 
-def fetch_credential_cli(name):
-    # type: (str) -> None
+def fetch_credential_cli(name, var_key=None):
+    # type: (Optional[str], Optional[str]) -> None
+    if var_key:
+        _, _, _, dotenv_path = _resolve_server_config(return_env_path=True)
+        name = dotenv_values(dotenv_path).get(var_key)
+        if not name:
+            print("Error: {} is not set in {}".format(var_key, ENV_FILE_NAME))
+            sys.exit(1)
     try:
         creds = fetch_credential(name)
         print(json.dumps(creds, indent=2))
@@ -565,23 +571,23 @@ def run_quickstart(args):
     print("\nQuickstart completed successfully")
 
 
-def import_credential(name, input_file, env_key, description, overwrite):
+def import_credential(name, input_file, var, description, overwrite):
     # type: (Optional[str], Optional[str], Optional[str], Optional[str], bool) -> None
     base_url, token, ca_cert, dotenv_path = _resolve_server_config(return_env_path=True)
 
-    if name and env_key:
+    if name and var:
         env_vars = dotenv_values(dotenv_path)
-        existing = env_vars.get(env_key)
+        existing = env_vars.get(var)
         if existing is not None and existing != name:
             print("Error: {} is already mapped to '{}' in {}. Use --name {} to match, or edit {} manually.".format(
-                env_key, existing, ENV_FILE_NAME, existing, ENV_FILE_NAME))
+                var, existing, ENV_FILE_NAME, existing, ENV_FILE_NAME))
             sys.exit(1)
         if existing is None:
-            set_env_variable(env_key, name)
-            print("Mapped {}={} in {}".format(env_key, name, ENV_FILE_NAME))
-    elif env_key:
+            set_env_variable(var, name)
+            print("Mapped {}={} in {}".format(var, name, ENV_FILE_NAME))
+    elif var:
         env_vars = dotenv_values(dotenv_path)
-        name = env_vars.get(env_key)
+        name = env_vars.get(var)
 
     if not name:
         print("Credential name not specified")
@@ -670,10 +676,17 @@ COMMANDS = {
 
     "fetch": {
         "help": "Fetch a named credential from the server",
-        "arguments": [
-            {"name": "name", "help": "Name of the credential"},
+        "mutually_exclusive_groups": [
+            {
+                "required": True,
+                "arguments": [
+                    {"name": "--name", "metavar": "NAME", "help": "Credential name"},
+                    {"name": "--var", "metavar": "ENV_VAR", "help": "Env var in .cred.env holding the credential name"},
+                ],
+            }
         ],
-        "handler": lambda args: fetch_credential_cli(args.name),
+        "arguments": [],
+        "handler": lambda args: fetch_credential_cli(args.name, args.var),
     },
 
     "register": {
@@ -714,7 +727,7 @@ COMMANDS = {
         "help": "Import or update a credential on the server",
         "arguments": [
             {"name": "--name",         "help": "Credential name"},
-            {"name": "--env",          "dest": "env_key", "help": "ENV var holding credential name"},
+            {"name": "--var",          "help": "Env var in .cred.env holding the credential name"},
             {"name": "--input-file",   "required": True, "help": "JSON file containing secret"},
             {"name": "--description",  "help": "Credential description"},
             {"name": "--overwrite",    "action": "store_true", "help": "Update existing credential"},
@@ -722,7 +735,7 @@ COMMANDS = {
         "handler": lambda args: import_credential(
             name=args.name,
             input_file=args.input_file,
-            env_key=args.env_key,
+            var=args.var,
             description=args.description,
             overwrite=args.overwrite,
         ),
