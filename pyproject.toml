@@ -17,7 +17,7 @@ dependencies = [
     "requests>=2.32.5",
     "python-dotenv>=1.2.1",
     "distro>=1.9.0",
-    "venv-cmds>=2026.05.01.01",
+
 ]
 
 [project.scripts]
