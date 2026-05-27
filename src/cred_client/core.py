@@ -24,6 +24,7 @@ try:
 except ImportError:
     distro = None
 
+from client_core.core import api_delete, api_get, api_post, api_put
 from cred_client._version import __version__
 
 ENV_FILE_NAME = ".cred.env"
@@ -213,7 +214,7 @@ def fetch_credential(
     url = f"{server_url.rstrip('/')}/api/credentials/{cred_name}/"
     headers = build_client_headers(api_token=api_token)
 
-    response = requests.get(url, headers=headers, verify=ca_cert or True)
+    response = api_get(url, headers=headers, verify=ca_cert or True)
 
     if response.status_code == 404:
         raise requests.HTTPError(f"Credential '{cred_name}' not found.", response=response)
@@ -246,7 +247,7 @@ def create_credential(
         payload["description"] = description
 
     try:
-        resp = requests.post(url, headers=headers, json=payload, verify=ca_cert or True)
+        resp = api_post(url, headers=headers, json=payload, verify=ca_cert or True)
         resp.raise_for_status()
     except requests.HTTPError as e:
         try:
@@ -285,7 +286,7 @@ def update_credential(
         payload["description"] = description
 
     try:
-        resp = requests.put(url, headers=headers, json=payload, verify=ca_cert or True)
+        resp = api_put(url, headers=headers, json=payload, verify=ca_cert or True)
         resp.raise_for_status()
     except requests.HTTPError as e:
         try:
@@ -318,7 +319,7 @@ def delete_credential(
     headers = build_client_headers(api_token=api_token)
 
     try:
-        resp = requests.delete(url, headers=headers, verify=ca_cert or True)
+        resp = api_delete(url, headers=headers, verify=ca_cert or True)
         resp.raise_for_status()
     except requests.HTTPError as e:
         try:
