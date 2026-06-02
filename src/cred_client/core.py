@@ -9,9 +9,7 @@ from an Ophix credential server.  Import from here in Tier 2 clients:
     from cred_client.core import get_cred, fetch_credential
 """
 
-import getpass
 import os
-import platform
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -19,13 +17,8 @@ from typing import Any, Dict, List, Optional, Tuple
 import requests
 from dotenv import find_dotenv, load_dotenv
 
-try:
-    import distro
-except ImportError:
-    distro = None
-
-from client_core.core import api_delete, api_get, api_post, api_put
-from cred_client._version import __version__
+from client_core.core import api_delete, api_get, api_post, api_put, build_client_headers, set_active_config
+from cred_client._config import CLIENT_CONFIG
 
 ENV_FILE_NAME = ".cred.env"
 
@@ -50,68 +43,6 @@ def env_get_generic(key):
     return os.getenv(RESERVED_KEY_NAMES.get(key, key))
 
 
-def in_venv():
-    # type: () -> Optional[Path]
-    if hasattr(sys, "real_prefix") or sys.prefix != sys.base_prefix:
-        return Path(sys.prefix)
-    return None
-
-
-def get_client_version():
-    # type: () -> str
-    """Return the verbatim version string from _version.py."""
-    return __version__
-
-
-def detect_os_flavour():
-    # type: () -> str
-    system = platform.system()
-
-    if system == "Linux" and distro:
-        name = distro.name(pretty=True)
-        version = distro.version(best=True)
-        if name and version:
-            return f"{name} {version}"
-        return name or "Linux"
-
-    if system == "Darwin":
-        return f"macOS {platform.mac_ver()[0]}"
-
-    if system == "Windows":
-        return f"Windows {platform.release()}"
-
-    return system
-
-
-def detect_invocation():
-    # type: () -> str
-    """Best-effort description of how the client was invoked."""
-    if sys.argv:
-        return " ".join(sys.argv[:2])
-    return "unknown"
-
-
-def build_client_headers(api_token=None):
-    # type: (Optional[str]) -> dict
-    headers = {}
-
-    headers["X-Cred-Client-Version"] = get_client_version()
-    headers["X-Cred-Python-Version"] = (
-        f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
-    )
-    headers["X-Cred-OS-Type"] = platform.system().lower()
-    headers["X-Cred-OS"] = detect_os_flavour()
-    headers["X-Cred-User"] = getpass.getuser()
-    headers["X-Cred-Invocation"] = detect_invocation()
-
-    venv_path = in_venv()
-    if venv_path:
-        headers["X-Cred-Venv-Name"] = venv_path.name
-
-    if api_token:
-        headers["Authorization"] = f"Token {api_token}"
-
-    return headers
 
 
 def _resolve_server_config(
@@ -204,6 +135,7 @@ def fetch_credential(
     if not cred_name or str(cred_name).strip() == "":
         raise ValueError("No credential name specified")
 
+    set_active_config(CLIENT_CONFIG)
     server_url, api_token, ca_cert = _resolve_server_config(server_url, api_token, ca_cert)
 
     if not server_url or not api_token:
@@ -212,7 +144,7 @@ def fetch_credential(
         )
 
     url = f"{server_url.rstrip('/')}/api/credentials/{cred_name}/"
-    headers = build_client_headers(api_token=api_token)
+    headers = build_client_headers(CLIENT_CONFIG, api_token=api_token)
 
     response = api_get(url, headers=headers, verify=ca_cert or True)
 
@@ -237,10 +169,11 @@ def create_credential(
 
     Returns the server response dict. Raises requests.HTTPError on failure.
     """
+    set_active_config(CLIENT_CONFIG)
     server_url, api_token, ca_cert = _resolve_server_config(server_url, api_token, ca_cert)
 
     url = f"{server_url.rstrip('/')}/api/credentials/{name}/"
-    headers = build_client_headers(api_token=api_token)
+    headers = build_client_headers(CLIENT_CONFIG, api_token=api_token)
 
     payload = {"secret_json": secret_json}
     if description is not None:
@@ -277,9 +210,10 @@ def update_credential(
 
     Returns the updated credential dict. Raises requests.HTTPError on failure.
     """
+    set_active_config(CLIENT_CONFIG)
     server_url, api_token, ca_cert = _resolve_server_config(server_url, api_token, ca_cert)
     url = f"{server_url.rstrip('/')}/api/credentials/{name}/"
-    headers = build_client_headers(api_token=api_token)
+    headers = build_client_headers(CLIENT_CONFIG, api_token=api_token)
 
     payload = {"secret_json": secret_json}
     if description:
@@ -314,9 +248,10 @@ def delete_credential(
 
     Returns the server response dict. Raises requests.HTTPError on failure.
     """
+    set_active_config(CLIENT_CONFIG)
     server_url, api_token, ca_cert = _resolve_server_config(server_url, api_token, ca_cert)
     url = f"{server_url.rstrip('/')}/api/credentials/{name}/"
-    headers = build_client_headers(api_token=api_token)
+    headers = build_client_headers(CLIENT_CONFIG, api_token=api_token)
 
     try:
         resp = api_delete(url, headers=headers, verify=ca_cert or True)
