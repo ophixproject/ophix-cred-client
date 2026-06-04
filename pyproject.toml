@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ophix-cred-client"
-version = "2026.06.02.01"
+version = "2026.06.04.01"
 description = "Credential Tier 1 client for Ophix Project Servers"
 readme = "README.md"
 requires-python = ">=3.7"
@@ -32,9 +32,9 @@ classifiers = [
 ]
 dependencies = [
     "ophix-client-core>=2026.05.28.01",
-    "requests>=2.32.5",
-    "python-dotenv>=1.2.1",
-    "distro>=1.9.0",
+    "requests>=2.28",
+    "python-dotenv>=1.0",
+    "distro>=1.8",
 ]
 
 [project.urls]
