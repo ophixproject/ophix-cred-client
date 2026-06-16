@@ -1,2 +1,2 @@
-__version__ = "2026.06.16.01"
+__version__ = "2026.06.16.02"
 __package_name__ = "ophix-cred-client"
