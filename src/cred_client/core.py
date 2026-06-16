@@ -12,12 +12,11 @@ from an Ophix credential server.  Import from here in Tier 2 clients:
 import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional
 
 import requests
-from dotenv import find_dotenv, load_dotenv
 
-from client_core.core import api_delete, api_get, api_post, api_put, build_client_headers, set_active_config
+from client_core.core import api_delete, api_get, api_post, api_put, build_client_headers, resolve_server_config, set_active_config
 from cred_client._config import CLIENT_CONFIG
 
 ENV_FILE_NAME = ".cred.env"
@@ -37,88 +36,6 @@ def format_required_keys(*keys):
     )
 
 
-def env_get_generic(key):
-    # type: (str) -> Optional[str]
-    """Get env var using generic key mapping. Falls back to raw key if not mapped."""
-    return os.getenv(RESERVED_KEY_NAMES.get(key, key))
-
-
-
-
-def _resolve_server_config(
-    server_url=None,           # type: Optional[str]
-    api_token=None,            # type: Optional[str]
-    ca_cert=None,              # type: Optional[str]
-    exit_on_error=True,        # type: bool
-    return_env_path=False,     # type: bool
-    ignore_missing_keys=None,  # type: Optional[List[str]]
-):
-    """
-    Resolve server configuration from arguments, .cred.env, .env, or environment.
-
-    Resolution order:
-      1. Explicit arguments
-      2. .cred.env (preferred)
-      3. .env (legacy fallback)
-      4. Process environment
-    """
-    if ignore_missing_keys is None:
-        ignore_missing_keys = []
-
-    # Load env files (non-destructive, deterministic)
-    env_path_found = None
-    cred_env_path = find_dotenv(filename=ENV_FILE_NAME, usecwd=True)
-    if cred_env_path:
-        load_dotenv(cred_env_path)
-        env_path_found = cred_env_path
-    else:
-        legacy_env_path = find_dotenv(usecwd=True)
-        if legacy_env_path:
-            load_dotenv(legacy_env_path)
-            print(f"WARNING: using legacy .env — rename to {ENV_FILE_NAME} to silence this warning")
-            env_path_found = legacy_env_path
-
-    # Resolve values (new keys first, then legacy)
-    server_url = (
-        server_url
-        or env_get_generic("SERVER")
-        or env_get_generic("CREDSERVER")  # legacy
-    )
-    api_token = api_token or env_get_generic("API_TOKEN")
-    ca_cert = ca_cert or env_get_generic("CA_CERT")
-
-    # Validate
-    errors = []
-
-    if (not server_url) and (RESERVED_KEY_NAMES["SERVER"] not in ignore_missing_keys):
-        errors.append(f"Server URL not set ({RESERVED_KEY_NAMES['SERVER']})")
-
-    if (not api_token or len(api_token) != 64) and (RESERVED_KEY_NAMES["API_TOKEN"] not in ignore_missing_keys):
-        errors.append(
-            f"API token missing or invalid ({RESERVED_KEY_NAMES['API_TOKEN']} — must be 64 hex chars)"
-        )
-
-    if ca_cert:
-        ca_path = Path(ca_cert)
-        if not ca_path.exists():
-            errors.append(f"CA cert file not found at {ca_cert}")
-        else:
-            ca_cert = str(ca_path.resolve())
-
-    if errors:
-        msg = "\n".join(errors)
-        if exit_on_error:
-            print(f"Error resolving server config:\n{msg}")
-            sys.exit(1)
-        else:
-            raise ValueError(msg)
-
-    if return_env_path:
-        return server_url, api_token, ca_cert, env_path_found
-
-    return server_url, api_token, ca_cert
-
-
 def fetch_credential(
     cred_name,       # type: str
     server_url=None, # type: Optional[str]
@@ -136,12 +53,9 @@ def fetch_credential(
         raise ValueError("No credential name specified")
 
     set_active_config(CLIENT_CONFIG)
-    server_url, api_token, ca_cert = _resolve_server_config(server_url, api_token, ca_cert)
-
-    if not server_url or not api_token:
-        raise ValueError(
-            f"Missing required configuration. Please set: {format_required_keys('SERVER', 'API_TOKEN')}"
-        )
+    server_url, api_token, ca_cert = resolve_server_config(
+        CLIENT_CONFIG, server_url, api_token, ca_cert
+    )
 
     url = f"{server_url.rstrip('/')}/api/credentials/{cred_name}/"
     headers = build_client_headers(CLIENT_CONFIG, api_token=api_token)
@@ -170,7 +84,9 @@ def create_credential(
     Returns the server response dict. Raises requests.HTTPError on failure.
     """
     set_active_config(CLIENT_CONFIG)
-    server_url, api_token, ca_cert = _resolve_server_config(server_url, api_token, ca_cert)
+    server_url, api_token, ca_cert = resolve_server_config(
+        CLIENT_CONFIG, server_url, api_token, ca_cert
+    )
 
     url = f"{server_url.rstrip('/')}/api/credentials/{name}/"
     headers = build_client_headers(CLIENT_CONFIG, api_token=api_token)
@@ -211,7 +127,9 @@ def update_credential(
     Returns the updated credential dict. Raises requests.HTTPError on failure.
     """
     set_active_config(CLIENT_CONFIG)
-    server_url, api_token, ca_cert = _resolve_server_config(server_url, api_token, ca_cert)
+    server_url, api_token, ca_cert = resolve_server_config(
+        CLIENT_CONFIG, server_url, api_token, ca_cert
+    )
     url = f"{server_url.rstrip('/')}/api/credentials/{name}/"
     headers = build_client_headers(CLIENT_CONFIG, api_token=api_token)
 
@@ -249,7 +167,9 @@ def delete_credential(
     Returns the server response dict. Raises requests.HTTPError on failure.
     """
     set_active_config(CLIENT_CONFIG)
-    server_url, api_token, ca_cert = _resolve_server_config(server_url, api_token, ca_cert)
+    server_url, api_token, ca_cert = resolve_server_config(
+        CLIENT_CONFIG, server_url, api_token, ca_cert
+    )
     url = f"{server_url.rstrip('/')}/api/credentials/{name}/"
     headers = build_client_headers(CLIENT_CONFIG, api_token=api_token)
 
@@ -283,8 +203,6 @@ def get_cred(env_var_name):
         from cred_client.core import get_cred
         secret = get_cred("MY_CRED_NAME")
     """
-    _resolve_server_config()  # triggers .cred.env load
-
     cred_name = os.getenv(env_var_name)
     if not cred_name:
         print(f"Environment variable {env_var_name} not set. Aborting.")

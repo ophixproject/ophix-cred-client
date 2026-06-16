@@ -14,13 +14,13 @@ import requests
 from dotenv import dotenv_values, set_key
 
 from client_core.commands import build_commands
+from client_core.core import resolve_server_config
 from client_core.parser import make_main
 
 from cred_client._config import CLIENT_CONFIG
 from cred_client.core import (
     ENV_FILE_NAME,
     RESERVED_KEY_NAMES,
-    _resolve_server_config,
     create_credential,
     fetch_credential,
     update_credential,
@@ -54,7 +54,7 @@ def cmd_fetch(args):
     # type: (object) -> None
     name = args.name
     if args.var:
-        _, _, _, dotenv_path = _resolve_server_config(return_env_path=True)
+        _, _, _, dotenv_path = resolve_server_config(CLIENT_CONFIG, return_env_path=True)
         name = dotenv_values(dotenv_path).get(args.var)
         if not name:
             print("Error: {} is not set in {}".format(args.var, ENV_FILE_NAME))
@@ -91,7 +91,7 @@ def _check_one(cred_name):
 def cmd_check(args):
     # type: (object) -> None
     if args.all:
-        _, _, _, dotenv_path = _resolve_server_config(return_env_path=True)
+        _, _, _, dotenv_path = resolve_server_config(CLIENT_CONFIG, return_env_path=True)
         env_vars = dotenv_values(dotenv_path)
         keys = sorted(k for k in env_vars if k not in EXCLUDED_ENV_KEYS)
         if not keys:
@@ -110,7 +110,7 @@ def cmd_check(args):
             rows.append(row)
         print(format_table(rows))
     elif args.var:
-        _, _, _, dotenv_path = _resolve_server_config(return_env_path=True)
+        _, _, _, dotenv_path = resolve_server_config(CLIENT_CONFIG, return_env_path=True)
         env_vars = dotenv_values(dotenv_path)
         if args.var not in env_vars:
             print("Key {} not found in {}".format(args.var, dotenv_path))
@@ -128,7 +128,7 @@ def cmd_check(args):
 
 def cmd_import(args):
     # type: (object) -> None
-    base_url, token, ca_cert, dotenv_path = _resolve_server_config(return_env_path=True)
+    base_url, token, ca_cert, dotenv_path = resolve_server_config(CLIENT_CONFIG, return_env_path=True)
     name = args.name
     if args.name and args.var:
         env_vars = dotenv_values(dotenv_path)
