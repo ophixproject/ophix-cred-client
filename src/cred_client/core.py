@@ -203,6 +203,16 @@ def get_cred(env_var_name):
         from cred_client.core import get_cred
         secret = get_cred("MY_CRED_NAME")
     """
+    set_active_config(CLIENT_CONFIG)
+    resolve_server_config(
+        CLIENT_CONFIG,
+        ignore_missing_keys=[
+            CLIENT_CONFIG.server_url_key,
+            CLIENT_CONFIG.api_token_key,
+            CLIENT_CONFIG.ca_cert_key,
+        ],
+    )
+
     cred_name = os.getenv(env_var_name)
     if not cred_name:
         print(f"Environment variable {env_var_name} not set. Aborting.")
